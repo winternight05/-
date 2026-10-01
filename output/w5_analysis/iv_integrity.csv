@@ -1,0 +1,31 @@
+﻿File,OriginalPoints,Segments,UsedSegmentStartIndex,UsedSegmentPoints,Vmin_V,Vmax_V,CompleteMinus3ToPlus3,CommonWindowPoints,Flag
+1_10um.csv,601,1,1,601,-3.000003,2.999999,True,201,OK
+1_15um.csv,601,1,1,601,-3.0,2.999999,True,201,OK
+1_20um.csv,601,1,1,601,-3.000005,2.999999,True,201,OK
+1_25um.csv,554,1,1,554,-3.0,2.529999,False,201,incomplete positive sweep
+1_30um.csv,633,2,1,601,-3.000001,3.0,True,201,restart; longest monotonic segment used
+1_35um.csv,601,1,1,601,-3.000021,2.999999,True,201,OK
+2_10um.csv,601,1,1,601,-3.000001,3.0,True,201,OK
+2_15um.csv,601,1,1,601,-2.999999,2.999999,True,201,OK
+2_20um.csv,601,1,1,601,-3.000001,2.999999,True,201,OK
+2_25um.csv,509,1,1,509,-2.999999,2.079999,False,201,incomplete positive sweep
+2_30um.csv,527,1,1,527,-3.0,2.260003,False,201,incomplete positive sweep
+2_35um.csv,601,1,1,601,-3.000001,2.999997,True,201,OK
+3_10um.csv,601,1,1,601,-3.000001,2.999999,True,201,OK
+3_15um.csv,601,1,1,601,-2.999999,2.999999,True,201,OK
+3_20um.csv,601,1,1,601,-3.0,2.999999,True,201,OK
+3_25um.csv,561,1,1,561,-2.999999,2.6,False,201,incomplete positive sweep
+3_30um.csv,448,1,1,448,-3.0,1.47,False,201,incomplete positive sweep
+3_35um.csv,601,1,1,601,-3.0,3.000002,True,201,OK
+4_10um.csv,601,1,1,601,-3.0,3.0,True,201,OK
+4_15um.csv,601,1,1,601,-3.0,2.999999,True,201,OK
+4_20um.csv,601,1,1,601,-3.0,2.999999,True,201,OK
+4_25um.csv,458,1,1,458,-3.0,1.569996,False,201,incomplete positive sweep
+4_30um.csv,455,1,1,455,-3.0,1.540002,False,201,incomplete positive sweep
+4_35um.csv,601,1,1,601,-3.0,2.999994,True,201,OK
+5_10um.csv,601,1,1,601,-3.0,2.999999,True,201,OK
+5_15um.csv,601,1,1,601,-3.0,2.999999,True,201,OK
+5_20um.csv,601,1,1,601,-3.000001,2.999999,True,201,OK
+5_25um.csv,508,1,1,508,-2.999999,2.069999,False,201,incomplete positive sweep
+5_30um.csv,420,1,1,420,-3.0,1.189999,False,201,incomplete positive sweep
+5_35um.csv,601,1,1,601,-3.0,3.000006,True,201,OK

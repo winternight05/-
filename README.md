@@ -147,3 +147,72 @@ R = Rsh/(2*pi) * [
 
 단순 `R-gap` 회귀의 기울기와 절편은 물리 파라미터로 직접 사용하지 않습니다. 최종 값은 exact CTLM 식으로 추출합니다. 다만 외부 ring contact의 폭이 제공되지 않았으므로 모델은 외부 전극이 충분히 넓고 금속의 sheet resistance가 무시 가능하다고 가정합니다. `rho_c` 오차는 `Rsh`와 `LT`의 독립 오차전파를 사용한 보수적 값입니다.
 
+---
+
+# W5 Pt/n-Si Schottky 분석
+
+W5는 교안의 측정 구성에 따라 `HIGH=Pt 전극`, `LOW=Si 기판 stage`인 수직 Schottky diode로 처리합니다. 따라서 I-V 파일명의 `10um`–`35um`은 CTLM 전류 경로 길이가 아니라 측정 위치를 구분하는 label로 사용합니다.
+
+## 실행
+
+```powershell
+python -m pip install -r requirements_w5.txt
+python analyze_w5.py
+```
+
+기본 입력은 `w5_data`, 출력은 `output/w5_analysis`입니다. 원본 CSV는 수정하지 않습니다.
+
+## W5 처리 기준
+
+- 발표용 I-V는 모든 파일이 공통으로 포함하는 `-1 V`–`+1 V`만 사용합니다.
+- `I_corrected = I_raw - I(0)`로 zero-current offset을 보정하고 원자료와 보정값을 모두 CSV에 저장합니다.
+- 정류비는 `abs(I(+V))/abs(I(-V))`로 계산합니다.
+- `1_30um.csv`의 재시작 sweep은 가장 긴 단조 증가 구간만 사용합니다.
+- 전체 `-3 V`–`+3 V` sweep이 끝나지 않은 파일도 공통 `-1 V`–`+1 V` 구간에는 문제가 없으므로 분석에는 포함하되, 대표 데이터 선발에서는 제외합니다.
+- C-V의 `O/R`는 결측치로 처리하고, `V <= 0 V` 및 `D <= 0.1`인 depletion 구간만 `1/C^2-V` 회귀에 사용합니다.
+
+## C-V 추출식
+
+원형 Pt 전극의 반지름은 `150 um`, 면적은 `7.06858e-4 cm^2`로 적용합니다. `T=300 K`, `epsilon_Si=11.7 epsilon_0`, `Nc=2.8e19 cm^-3`를 사용합니다.
+
+```text
+1/C^2 = 2(Vbi - V)/(q epsilon_Si ND A^2)
+ND    = -2/(q epsilon_Si A^2 slope)
+Vbi   = -intercept/slope
+phi_n = (kT/q) ln(Nc/ND)
+phi_B = Vbi + phi_n
+```
+
+## W5 주요 결과
+
+- 가장 전형적인 Schottky 측정: `3_20um.csv`
+  - `RR(+/-1 V) = 1.577e5`
+  - `n = 1.322`
+  - `phi_B(I-V) = 0.813 eV` — 비이상성과 series resistance 영향을 받으므로 보조값으로 사용
+- 상대적으로 가장 Ohmic-like한 측정: `1_35um.csv`
+  - `RR(+/-1 V) = 4.876`
+  - 이상적인 Ohmic 접촉이 아니라 비교군 중 정류성이 가장 약한 데이터라는 의미입니다.
+- 5개 C-V 측정 평균:
+  - `Vbi = 0.7192 +/- 0.0228 V`
+  - `ND = (1.170 +/- 0.023)e15 cm^-3`
+  - `phi_n = 0.2607 +/- 0.0005 eV`
+  - `phi_B(C-V) = 0.9798 +/- 0.0224 eV`
+  - 평균 `R^2 = 0.99678`
+
+## W5 산출물
+
+| 파일 | 내용 |
+|---|---|
+| `W5_Schottky_analysis.xlsx` | 원자료 표, Excel 수식, 15개 편집 가능한 차트가 포함된 최종 워크북 |
+| `iv_integrity.csv` | sweep 재시작·종료 범위·공통 구간 점검 |
+| `iv_metrics.csv` | 정류비, 대칭성, 원점 선형성, n, Is, I-V barrier 및 분류 |
+| `iv_common_window_data.csv` | `-1 V`–`+1 V` 원전류·보정전류·전류밀도 |
+| `cv_integrity.csv` | C-V 숫자/결측 행 및 측정 범위 점검 |
+| `cv_cleaned_data.csv` | 정제된 C-V, dissipation factor, `1/C^2`, 회귀 사용 여부 |
+| `cv_fit_summary.csv` | 측정별 slope, intercept, R², Vbi, ND, phi_n, phi_B와 표준오차 |
+| `cv_parameter_statistics.csv` | 5개 측정의 평균 및 표본표준편차 |
+| `01`–`07` PNG | 전체/대표 I-V, 정류비, C-V, `1/C^2-V`, 추출 파라미터 그래프 |
+| `analysis_notes.md` | 처리 결정, 식, 결과 및 해석 한계 |
+
+Excel 워크북에서는 `CV Parameters` 시트의 `Vbi`, `ND`, `phi_n`, `phi_B`가 slope/intercept와 `Summary` 상수 셀을 참조하는 수식으로 계산됩니다. 차트는 PNG 삽입물이 아니라 Excel 네이티브 차트이므로 축, 범례, 색상과 데이터 범위를 직접 수정할 수 있습니다. `build_w5_excel.mjs`는 동일 워크북을 다시 만드는 빌더이며 `@oai/artifact-tool` 실행 환경이 필요합니다.
+
