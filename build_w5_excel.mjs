@@ -4,7 +4,7 @@ import { SpreadsheetFile, Workbook } from "@oai/artifact-tool";
 const root = process.cwd();
 const sourceDir = `${root}/output/w5_analysis`;
 const outputDir = `${root}/outputs/w5_schottky_excel`;
-const outputPath = `${outputDir}/W5_Schottky_analysis.xlsx`;
+const outputPath = `${outputDir}/W5_Schottky_analysis_revised.xlsx`;
 const previewDir = `${root}/tmp/xlsx/w5_previews`;
 
 function parseCsv(text) {
@@ -51,14 +51,15 @@ const wb = Workbook.create();
 const summary = wb.worksheets.add("Summary");
 const reps = wb.worksheets.add("IV Representatives");
 const metricSheet = wb.worksheets.add("IV Metrics");
-const rowSheets = [1,2,3,4,5].map(n => wb.worksheets.add(`IV Row ${n}`));
+const gapValues = [10,15,20,25,30,35];
+const gapSheets = gapValues.map(g => wb.worksheets.add(`IV Gap ${g}`));
 const cvCurves = wb.worksheets.add("CV Curves");
 const cvFitSheet = wb.worksheets.add("CV Fits");
 const cvParam = wb.worksheets.add("CV Parameters");
 const ivAuditSheet = wb.worksheets.add("IV Audit");
 const cvDataSheet = wb.worksheets.add("CV Data");
 const method = wb.worksheets.add("Method");
-const sheets = [summary, reps, metricSheet, ...rowSheets, cvCurves, cvFitSheet, cvParam, ivAuditSheet, cvDataSheet, method];
+const sheets = [summary, reps, metricSheet, ...gapSheets, cvCurves, cvFitSheet, cvParam, ivAuditSheet, cvDataSheet, method];
 
 const font = "Arial", navy = "#17365D", blue = "#2563EB", red = "#E11D48", green = "#059669";
 const purple = "#7C3AED", orange = "#D97706", teal = "#0891B2", dark = "#1F2937", gray = "#6B7280";
@@ -135,27 +136,29 @@ const repLast = 6 + oData.length; styleTable(reps, `A6:E${repLast}`, "A6:E6");
 lineChart(reps, reps.getRange(`A6:C${repLast}`), "G6", "P27", "Representative I-V on linear scale", "Voltage (V)", "J (A/cm^2)", [blue, red], true);
 lineChart(reps, [reps.getRange(`A6:A${repLast}`), reps.getRange(`D6:D${repLast}`), reps.getRange(`E6:E${repLast}`)], "G29", "P50", "Representative I-V on log magnitude scale", "Voltage (V)", "log10(|J|)", [blue, red], true);
 
-// One editable chart per device row.
-for (let row=1; row<=5; row++) {
-  const sh = rowSheets[row-1]; title(sh, `I-V curves: device row ${row}`, "Offset-corrected current density in the common -1 V to +1 V window");
-  const gaps=[10,15,20,25,30,35]; const first=iv.filter(r=>r.DeviceRow===row && r.GapLabel_um===10).sort((a,b)=>a.Voltage_V-b.Voltage_V);
-  const byGap = new Map(gaps.map(g => [g, iv.filter(r=>r.DeviceRow===row && r.GapLabel_um===g).sort((a,b)=>a.Voltage_V-b.Voltage_V)]));
-  sh.getRange("A6:G6").values = [["Voltage (V)", ...gaps.map(g=>`${g} um`)]];
+// One editable chart per available gap label, matching the presentation PNG.
+for (let gapIndex=0; gapIndex<gapValues.length; gapIndex++) {
+  const gap=gapValues[gapIndex], sh=gapSheets[gapIndex];
+  title(sh, `I-V curves: gap label ${gap} um`, "Rows 1-5 compared in the -0.4 V to +0.8 V display window");
+  const rows=[1,2,3,4,5];
+  const byRow = new Map(rows.map(row => [row, iv.filter(r=>r.DeviceRow===row && r.GapLabel_um===gap && r.Voltage_V>=-0.4 && r.Voltage_V<=0.8).sort((a,b)=>a.Voltage_V-b.Voltage_V)]));
+  const first=byRow.get(1);
+  sh.getRange("A6:F6").values = [["Voltage (V)", ...rows.map(row=>`Row ${row}`)]];
   for (let i=0;i<first.length;i++) {
     const values=[first[i].Voltage_V];
-    for (const gap of gaps) values.push(byGap.get(gap)[i]?.CurrentDensity_A_cm2 ?? "");
-    sh.getRange(`A${7+i}:G${7+i}`).values=[values];
+    for (const row of rows) values.push(byRow.get(row)[i]?.CurrentDensity_A_cm2 ?? "");
+    sh.getRange(`A${7+i}:F${7+i}`).values=[values];
   }
-  const last=6+first.length; styleTable(sh, `A6:G${last}`, "A6:G6");
-  lineChart(sh, sh.getRange(`A6:G${last}`), "I6", "Q29", `Row ${row}: I-V comparison`, "Voltage (V)", "J (A/cm^2)", colors, true);
+  const last=6+first.length; styleTable(sh, `A6:F${last}`, "A6:F6");
+  lineChart(sh, sh.getRange(`A6:F${last}`), "H6", "Q29", `Gap ${gap} um: I-V comparison`, "Voltage (V)", "J (A/cm^2)", colors, true);
 }
 
 // C-V source data and combined chart.
 title(cvDataSheet, "Cleaned C-V source data", "Nonnumeric O/R rows removed; UsedForFit marks the reverse-depletion regression points");
 cvDataSheet.getRange("A5").write(cvData); styleTable(cvDataSheet, `A5:H${4+cvData.length}`, "A5:H5");
-title(cvCurves, "Capacitance-voltage curves", "10 kHz CP-RP data; all five measurements shown as editable Excel series");
+title(cvCurves, "Capacitance-voltage curves", "10 kHz CP-RP data; display ends at +0.15 V to emphasize the transition near +0.06 V");
 const cvFiles=["1.csv","2.csv","3.csv","4.csv","5.csv"], grid=[];
-for(let k=0;k<=51;k++) grid.push(Number((-3+k*0.1).toFixed(1)));
+for(let k=0;k<=63;k++) grid.push(Number((-3+k*0.05).toFixed(2)));
 cvCurves.getRange("A6:F6").values=[["Bias voltage (V)",...cvFiles]];
 for(let i=0;i<grid.length;i++) {
   const values=[grid[i]];

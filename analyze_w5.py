@@ -189,16 +189,19 @@ class Plot:
         self.draw.text(((px0 + px1) // 2 - 50, y1 - 42), xlabel, fill="#111827", font=get_font(20))
         self.draw.text((px0, y0 + 34), ylabel, fill="#111827", font=get_font(18))
 
-        for idx, (name, xvals, yvals, color) in enumerate(series):
+        for idx, entry in enumerate(series):
+            name, xvals, yvals, color = entry[:4]
+            draw_points = entry[4] if len(entry) > 4 else scatter
+            line_width = entry[5] if len(entry) > 5 else 4
             points = []
             for x, y in zip(xvals, yvals):
                 if math.isfinite(float(y)):
                     points.append((sx(float(x)), sy(float(y))))
-            if len(points) >= 2:
-                self.draw.line(points, fill=color, width=4)
-            if scatter:
+            if len(points) >= 2 and line_width > 0:
+                self.draw.line(points, fill=color, width=line_width)
+            if draw_points:
                 for xp, yp in points:
-                    self.draw.ellipse((xp - 4, yp - 4, xp + 4, yp + 4), fill=color)
+                    self.draw.ellipse((xp - 2, yp - 2, xp + 2, yp + 2), fill=color)
             if legend:
                 lx = px0 + 15 + (idx % 3) * 400
                 ly = py0 + 12 + (idx // 3) * 28
@@ -207,16 +210,17 @@ class Plot:
 
 
 def make_iv_all_plot(path, curves):
-    p = Plot(1800, 1500)
-    p.draw.text((45, 25), "W5 Pt/n-Si I-V: common presentation window", fill=NAVY, font=get_font(34, True))
-    p.draw.text((45, 70), "Offset-corrected current density; raw data retained separately", fill=GRAY, font=get_font(21))
-    for row in range(1, 6):
+    p = Plot(1800, 1750)
+    p.draw.text((45, 25), "W5 Pt/n-Si I-V grouped by gap label", fill=NAVY, font=get_font(34, True))
+    p.draw.text((45, 70), "Display window -0.4 V to +0.8 V centers the transition and emphasizes the forward rise", fill=GRAY, font=get_font(21))
+    for panel, gap in enumerate([10, 15, 20, 25, 30, 35]):
         panel_curves = []
-        for idx, gap in enumerate([10, 15, 20, 25, 30, 35]):
+        for idx, row in enumerate(range(1, 6)):
             c = curves[(row, gap)]
-            panel_curves.append((f"{gap} um", c["v"], c["j"], COLORS[idx]))
-        top = 110 + (row - 1) * 275
-        p.panel((35, top, 1760, top + 255), panel_curves, "Voltage (V)", "J (A/cm^2)", f"Device row {row}", xlim=(-1, 1), legend=True)
+            mask = (c["v"] >= -0.4) & (c["v"] <= 0.8)
+            panel_curves.append((f"Row {row}", c["v"][mask], c["j"][mask], COLORS[idx]))
+        top = 110 + panel * 270
+        p.panel((35, top, 1760, top + 250), panel_curves, "Voltage (V)", "J (A/cm^2)", f"Gap label {gap} um", xlim=(-0.4, 0.8), legend=True)
     p.save(path)
 
 
@@ -269,8 +273,11 @@ def make_cv_plot(path, cv_curves):
     p = Plot(1600, 950)
     p.draw.text((45, 25), "W5 Pt/n-Si capacitance-voltage characteristics", fill=NAVY, font=get_font(34, True))
     p.draw.text((45, 70), "10 kHz CP-RP measurements; nonnumeric O/R values excluded", fill=GRAY, font=get_font(21))
-    series = [(name, c["v"], c["c_pf"], COLORS[i]) for i, (name, c) in enumerate(cv_curves.items())]
-    p.panel((35, 115, 1565, 900), series, "Bias voltage (V)", "Capacitance (pF)", "C-V curves", legend=True)
+    series = []
+    for i, (name, c) in enumerate(cv_curves.items()):
+        mask = c["v"] <= 0.15
+        series.append((name, c["v"][mask], c["c_pf"][mask], COLORS[i]))
+    p.panel((35, 115, 1565, 900), series, "Bias voltage (V)", "Capacitance (pF)", "C-V curves", xlim=(-3, 0.15), legend=True)
     p.save(path)
 
 
@@ -287,8 +294,8 @@ def make_cv_fit_plot(path, cv_curves, cv_fits):
         f = cv_fits[name]
         xf = np.linspace(float(np.min(x)), min(0.85, f["vbi"]), 100)
         yf = (f["slope"] * xf + f["intercept"]) / 1e22
-        series = [("data", x, y, COLORS[idx]), (f"fit R2={f['r2']:.5f}", xf, yf, GRAY)]
-        p.panel(box, series, "Bias voltage (V)", "1/C^2 (1e22 F^-2)", f"Measurement {name}: Vbi={f['vbi']:.3f} V", legend=True, scatter=True)
+        series = [("measured", x, y, COLORS[idx], True, 0), (f"linear fit R2={f['r2']:.5f}", xf, yf, GRAY, False, 3)]
+        p.panel(box, series, "Bias voltage (V)", "1/C^2 (1e22 F^-2)", f"Measurement {name}: Vbi={f['vbi']:.3f} V", legend=True, scatter=False)
     p.save(path)
 
 
